@@ -6,9 +6,13 @@ import requests
 from pathlib import Path
 from typing import Dict, Any, Tuple
 from crypto_utils import (
+    create_rsa_key_pair,
     read_public_key_pem,
     hybrid_encrypt_data,
+    write_private_key_pem,
+    write_public_key_pem,
 )
+from cryptography.hazmat.primitives import serialization
 
 def get_server_url(host: str = "localhost", port: int = 1212, use_https: bool = False) -> str:
     """Get the full server URL"""
@@ -18,15 +22,7 @@ def get_server_url(host: str = "localhost", port: int = 1212, use_https: bool = 
 def get_server_public_key() -> Path:
     """Get the path to the server's public key"""
     return Path(__file__).resolve().parent / 'serverkeys' / 'public.pem'
-    try:
-        key_path = key_dir / "server_public.pem"
-        if key_path.exists():
-            key_path.unlink()
-            print("Server public key deleted successfully")
-        else:
-            print("No server public key found")
-    except Exception as e:
-        raise RuntimeError(f"Failed to delete server public key: {e}")
+   
 
 def load_server_public_key(key_dir: Path) -> Any:
     """Load the server's public key"""
@@ -117,8 +113,49 @@ def process_decryption_request():
     except Exception as e:
         print(f"\nError: {e}")
 
+
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+RED = "\033[91m"
+RESET = "\033[0m"
+
 if __name__ == "__main__":
+    keys_dir = Path("clientkeys")
+    keys_dir.mkdir(exist_ok=True)
+
+    priv_key_path = keys_dir / "private.pem"
+    pub_key_path = keys_dir / "public.pem"
+
+    if priv_key_path.exists() and pub_key_path.exists():
+        print(f"{YELLOW}Keys already exist. Skipping generation.{RESET}")
+    else:
+        # Generate new keys
+        priv, pub = create_rsa_key_pair()
+        write_private_key_pem(priv_key_path, priv)
+        write_public_key_pem(pub_key_path, pub)
+        print(f"{GREEN}New client keys generated and stored in 'clientkeys' directory.{RESET}")
+
+    # Load or use the public key to print its PEM
+    if not pub_key_path.exists():
+        raise FileNotFoundError(f"Public key not found at {pub_key_path}")
+
+    # If you still have the `pub` object (only if just generated):
+    if 'pub' in locals():
+        public_key_pem = pub.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode()
+    else:
+        # Otherwise, read it from file
+        with open(pub_key_path, 'r') as f:
+            public_key_pem = f.read()
+
+    print(f"\n{CYAN}Public key path: {pub_key_path}{RESET}")
+    print(f"{GREEN}Public key PEM:\n{public_key_pem}{RESET}")
+    print(f"{YELLOW}Share the public key with the server!{RESET}")
+
+    print(f"\n{CYAN}Private key path: {priv_key_path}{RESET}")
+    print(f"{RED}Don't share the private key with anyone!{RESET}")
+
     process_decryption_request()
-
-
-
