@@ -250,6 +250,14 @@ def check_and_create_keys(private_key_path: Path, public_key_path: Path, key_bit
 
 def main():
     # Create keys directory if it doesn't exist
+    keys_dir = Path("serverkeys")
+    keys_dir.mkdir(exist_ok=True)
+    
+    # 1️⃣ Key generation & storage
+    priv, pub = create_rsa_key_pair()
+    write_private_key_pem(keys_dir / "private.pem", priv)
+    write_public_key_pem(keys_dir / "public.pem", pub)
+
     keys_dir = Path("clientkeys")
     keys_dir.mkdir(exist_ok=True)
     
